@@ -119,11 +119,16 @@ async function handleWrite(options: Record<string, string | boolean>, io: CliIo)
   const manager = new JournalManager(resolveProjectPath(options), resolveUserPath(options));
   const entry = await manager.writeEntry(content);
 
-  emit(io, options, {
-    ok: true,
-    command: 'write',
-    entry,
-  }, `Recorded project journal entry: ${entry.path}`);
+  emit(
+    io,
+    options,
+    {
+      ok: true,
+      command: 'write',
+      entry,
+    },
+    `Recorded project journal entry: ${entry.path}`
+  );
 }
 
 async function handleThoughts(options: Record<string, string | boolean>, io: CliIo): Promise<void> {
@@ -142,11 +147,16 @@ async function handleThoughts(options: Record<string, string | boolean>, io: Cli
   const manager = new JournalManager(resolveProjectPath(options), resolveUserPath(options));
   const entries = await manager.writeThoughts(thoughts);
 
-  emit(io, options, {
-    ok: true,
-    command: 'thoughts',
-    entries,
-  }, formatThoughtsSummary(entries));
+  emit(
+    io,
+    options,
+    {
+      ok: true,
+      command: 'thoughts',
+      entries,
+    },
+    formatThoughtsSummary(entries)
+  );
 }
 
 async function handleSearch(options: Record<string, string | boolean>, io: CliIo): Promise<void> {
@@ -158,11 +168,16 @@ async function handleSearch(options: Record<string, string | boolean>, io: CliIo
     sections: getSections(options),
   });
 
-  emit(io, options, {
-    ok: true,
-    command: 'search',
-    results,
-  }, formatSearchSummary(results));
+  emit(
+    io,
+    options,
+    {
+      ok: true,
+      command: 'search',
+      results,
+    },
+    formatSearchSummary(results)
+  );
 }
 
 async function handleRead(options: Record<string, string | boolean>, io: CliIo): Promise<void> {
@@ -174,14 +189,19 @@ async function handleRead(options: Record<string, string | boolean>, io: CliIo):
     throw new Error(`Entry not found: ${entryPath}`);
   }
 
-  emit(io, options, {
-    ok: true,
-    command: 'read',
-    entry: {
-      path: entryPath,
-      content,
+  emit(
+    io,
+    options,
+    {
+      ok: true,
+      command: 'read',
+      entry: {
+        path: entryPath,
+        content,
+      },
     },
-  }, content);
+    content
+  );
 }
 
 async function handleRecent(options: Record<string, string | boolean>, io: CliIo): Promise<void> {
@@ -197,11 +217,16 @@ async function handleRecent(options: Record<string, string | boolean>, io: CliIo
     dateRange: { start: startDate },
   });
 
-  emit(io, options, {
-    ok: true,
-    command: 'recent',
-    results,
-  }, formatRecentSummary(results, days));
+  emit(
+    io,
+    options,
+    {
+      ok: true,
+      command: 'recent',
+      results,
+    },
+    formatRecentSummary(results, days)
+  );
 }
 
 function requireString(options: Record<string, string | boolean>, key: string): string {
@@ -212,12 +237,19 @@ function requireString(options: Record<string, string | boolean>, key: string): 
   return value;
 }
 
-function getOptionalString(options: Record<string, string | boolean>, key: string): string | undefined {
+function getOptionalString(
+  options: Record<string, string | boolean>,
+  key: string
+): string | undefined {
   const value = options[key];
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function getNumber(options: Record<string, string | boolean>, key: string, defaultValue: number): number {
+function getNumber(
+  options: Record<string, string | boolean>,
+  key: string,
+  defaultValue: number
+): number {
   const value = options[key];
   if (value === undefined) {
     return defaultValue;
@@ -270,7 +302,12 @@ function resolveUserPath(options: Record<string, string | boolean>): string {
   return override ? path.resolve(override) : resolveUserJournalPath();
 }
 
-function emit(io: CliIo, options: Record<string, string | boolean>, payload: unknown, text: string): void {
+function emit(
+  io: CliIo,
+  options: Record<string, string | boolean>,
+  payload: unknown,
+  text: string
+): void {
   if (options.json === true) {
     writeLine(io.stdout, JSON.stringify(payload));
     return;
@@ -279,7 +316,10 @@ function emit(io: CliIo, options: Record<string, string | boolean>, payload: unk
   writeLine(io.stdout, text);
 }
 
-function formatThoughtsSummary(entries: { project?: { path: string }; user?: { path: string } }): string {
+function formatThoughtsSummary(entries: {
+  project?: { path: string };
+  user?: { path: string };
+}): string {
   const lines = ['Recorded structured thoughts:'];
   if (entries.project) {
     lines.push(`project: ${entries.project.path}`);
@@ -295,7 +335,10 @@ function formatSearchSummary(results: Array<{ path: string; score: number }>): s
     return 'No relevant entries found.';
   }
 
-  return ['Search results:', ...results.map((result, index) => `${index + 1}. ${result.path} (${result.score.toFixed(3)})`)].join('\n');
+  return [
+    'Search results:',
+    ...results.map((result, index) => `${index + 1}. ${result.path} (${result.score.toFixed(3)})`),
+  ].join('\n');
 }
 
 function formatRecentSummary(results: Array<{ path: string }>, days: number): string {
@@ -303,7 +346,10 @@ function formatRecentSummary(results: Array<{ path: string }>, days: number): st
     return `No entries found in the last ${days} days.`;
   }
 
-  return [`Recent entries from the last ${days} days:`, ...results.map((result) => result.path)].join('\n');
+  return [
+    `Recent entries from the last ${days} days:`,
+    ...results.map((result) => result.path),
+  ].join('\n');
 }
 
 function writeLine(writer: (message: string) => void, message: string): void {

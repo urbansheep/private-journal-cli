@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Codex and other agent runtimes when working with code in this repository.
 
 ## Common Development Commands
 
@@ -57,19 +57,34 @@ This is a local-first CLI (`private-journal`) that gives AI agents and assistant
 | `read` | Read a specific entry by path |
 | `recent` | List recent entries with optional date/type filter |
 
+## Using the Journal from Agent Code
+
+Always pass `--json` and parse stdout. Example invocations:
+
+```bash
+# Capture structured thoughts
+private-journal thoughts \
+  --project-notes "Discovered issue in auth flow" \
+  --technical-insights "Prefer condition-based waiting over sleep" \
+  --feelings "Frustrated but making progress" \
+  --json
+
+# Search prior context
+private-journal search --query "how we handled auth errors" --limit 5 --json
+
+# List recent entries
+private-journal recent --days 7 --type both --json
+```
+
+JSON exit codes: `0` = success, `1` = usage error, `2` = runtime failure.
+
 ## Skill Package
 
 A pre-built agent skill is bundled in `skills/private-journal-cli.skill`.
-Install it for Claude Code or other agents:
+Install it for Codex, Claude Code, or other agents:
 
 ```bash
 npx skills add ./skills/private-journal-cli.skill
-```
-
-Or install from the npm package once published:
-
-```bash
-npx skills add private-journal-cli@skill
 ```
 
 ## Testing Approach
