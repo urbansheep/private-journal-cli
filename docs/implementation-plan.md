@@ -1,4 +1,9 @@
-# Private Journal MCP Server - V1 Implementation Plan
+# Historical: Private Journal MCP Server - V1 Implementation Plan
+
+> Archived document.
+>
+> This implementation plan was written for the original MCP-server architecture and should not be treated as the current roadmap.
+> The repository has since been converted to a CLI. For current usage and migration context, see the main [README](../README.md), the [CLI conversion design](./plans/2026-03-13-cli-conversion-design.md), and the [CLI conversion plan](./plans/2026-03-13-cli-conversion-plan.md).
 
 ## Project Overview
 

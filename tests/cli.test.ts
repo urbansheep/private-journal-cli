@@ -173,6 +173,80 @@ describe('CLI conversion', () => {
     expect(recentPayload.results[0].path).toBe(entryPath);
   });
 
+  test('keeps thoughts, search, and recent usable when transformers are unavailable', async () => {
+    jest.resetModules();
+
+    const transformers = jest.requireMock('@xenova/transformers') as {
+      pipeline: jest.Mock;
+    };
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    transformers.pipeline.mockRejectedValueOnce(new Error('offline'));
+
+    try {
+      const thoughtsResult = await invokeCli([
+        'thoughts',
+        '--technical-insights',
+        'Vector embeddings help semantic search',
+        '--user-journal-path',
+        userTempDir,
+        '--journal-path',
+        projectTempDir,
+        '--json',
+      ]);
+
+      expect(thoughtsResult.exitCode).toBe(0);
+
+      const thoughtsPayload = JSON.parse(thoughtsResult.stdout);
+      const entryPath = thoughtsPayload.entries.user.path;
+
+      const searchResult = await invokeCli([
+        'search',
+        '--query',
+        'semantic vectors',
+        '--user-journal-path',
+        userTempDir,
+        '--journal-path',
+        projectTempDir,
+        '--json',
+      ]);
+
+      expect(searchResult.exitCode).toBe(0);
+
+      const searchPayload = JSON.parse(searchResult.stdout);
+      expect(searchPayload.results).toHaveLength(1);
+      expect(searchPayload.results[0].path).toBe(entryPath);
+
+      const recentResult = await invokeCli([
+        'recent',
+        '--days',
+        '7',
+        '--limit',
+        '5',
+        '--user-journal-path',
+        userTempDir,
+        '--journal-path',
+        projectTempDir,
+        '--json',
+      ]);
+
+      expect(recentResult.exitCode).toBe(0);
+
+      const recentPayload = JSON.parse(recentResult.stdout);
+      expect(recentPayload.results).toHaveLength(1);
+      expect(recentPayload.results[0].path).toBe(entryPath);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+      transformers.pipeline.mockReset();
+      transformers.pipeline.mockResolvedValue(
+        jest.fn().mockResolvedValue({
+          data: new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]),
+        })
+      );
+    }
+  });
+
   test('package metadata no longer advertises MCP', async () => {
     const packageJson = JSON.parse(await fs.readFile(path.join(process.cwd(), 'package.json'), 'utf8'));
 

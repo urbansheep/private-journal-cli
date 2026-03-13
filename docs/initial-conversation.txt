@@ -1,3 +1,6 @@
+Historical transcript note:
+This file captures the original MCP-era discovery conversation. It is kept for project history only and does not describe the current CLI interface. See ../README.md and docs/plans/2026-03-13-cli-conversion-*.md for current CLI documentation.
+
 ⏺ I'd love to help you develop a thorough spec for your idea, Jesse! Let me start with the most fundamental question:
 
   What is the core problem or need that your idea is trying to solve?

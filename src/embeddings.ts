@@ -17,7 +17,9 @@ export class EmbeddingService {
   private static instance: EmbeddingService;
   private extractor: FeatureExtractionPipeline | null = null;
   private readonly modelName = 'Xenova/all-MiniLM-L6-v2';
+  private readonly fallbackDimensions = 384;
   private initPromise: Promise<void> | null = null;
+  private useFallback = false;
 
   private constructor() {}
 
@@ -54,26 +56,30 @@ export class EmbeddingService {
       this.logDebug('Embedding model loaded successfully');
     } catch (error) {
       this.logDebug('Failed to load embedding model:', error);
-      throw error;
+      this.useFallback = true;
     }
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    if (!this.extractor) {
+    if (!this.extractor && !this.useFallback) {
       await this.initialize();
     }
 
-    if (!this.extractor) {
-      throw new Error('Embedding model not initialized');
+    if (this.extractor) {
+      try {
+        const result = await this.extractor(text, { pooling: 'mean', normalize: true });
+        return Array.from(result.data);
+      } catch (error) {
+        this.logDebug('Failed to generate transformer embedding, using fallback:', error);
+        this.useFallback = true;
+      }
     }
 
-    try {
-      const result = await this.extractor(text, { pooling: 'mean', normalize: true });
-      return Array.from(result.data);
-    } catch (error) {
-      console.error('Failed to generate embedding:', error);
-      throw error;
+    if (this.useFallback) {
+      return this.generateFallbackEmbedding(text);
     }
+
+    throw new Error('Embedding model not initialized');
   }
 
   cosineSimilarity(a: number[], b: number[]): number {
@@ -138,5 +144,78 @@ export class EmbeddingService {
       text: cleanText,
       sections
     };
+  }
+
+  private generateFallbackEmbedding(text: string): number[] {
+    const vector = new Array<number>(this.fallbackDimensions).fill(0);
+    const tokens = this.tokenize(text);
+
+    if (tokens.length === 0) {
+      return vector;
+    }
+
+    for (const token of tokens) {
+      this.accumulateFeature(vector, token, 1);
+
+      if (token.length >= 3) {
+        for (let index = 0; index <= token.length - 3; index += 1) {
+          this.accumulateFeature(vector, token.slice(index, index + 3), 0.35);
+        }
+      }
+    }
+
+    let magnitude = 0;
+    for (const value of vector) {
+      magnitude += value * value;
+    }
+
+    if (magnitude === 0) {
+      return vector;
+    }
+
+    const scale = Math.sqrt(magnitude);
+    return vector.map((value) => value / scale);
+  }
+
+  private tokenize(text: string): string[] {
+    return text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/i)
+      .map((token) => this.normalizeToken(token))
+      .filter((token) => token.length > 0);
+  }
+
+  private normalizeToken(token: string): string {
+    if (token.endsWith('ies') && token.length > 4) {
+      return `${token.slice(0, -3)}y`;
+    }
+
+    if (token.endsWith('es') && token.length > 4) {
+      return token.slice(0, -2);
+    }
+
+    if (token.endsWith('s') && token.length > 3) {
+      return token.slice(0, -1);
+    }
+
+    return token;
+  }
+
+  private accumulateFeature(vector: number[], feature: string, weight: number): void {
+    const hash = this.hashFeature(feature);
+    const index = hash % this.fallbackDimensions;
+    const sign = (hash & 1) === 0 ? 1 : -1;
+    vector[index] += weight * sign;
+  }
+
+  private hashFeature(feature: string): number {
+    let hash = 2166136261;
+
+    for (let index = 0; index < feature.length; index += 1) {
+      hash ^= feature.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return hash >>> 0;
   }
 }

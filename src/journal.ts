@@ -18,6 +18,16 @@ export class JournalManager {
     this.embeddingService = EmbeddingService.getInstance();
   }
 
+  private logDebug(message: string, error?: unknown): void {
+    if (process.env.PRIVATE_JOURNAL_DEBUG === '1') {
+      if (error !== undefined) {
+        console.error(message, error);
+      } else {
+        console.error(message);
+      }
+    }
+  }
+
   async writeEntry(content: string): Promise<WrittenEntry> {
     const timestamp = new Date();
     const dateString = this.formatDate(timestamp);
@@ -227,7 +237,7 @@ ${sections.join('\n\n')}
 
       await this.embeddingService.saveEmbedding(filePath, embeddingData);
     } catch (error) {
-      console.error(`Failed to generate embedding for ${filePath}:`, error);
+      this.logDebug(`Failed to generate embedding for ${filePath}:`, error);
     }
   }
 

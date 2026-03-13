@@ -1,4 +1,9 @@
-# Private Journal MCP Server Specification
+# Historical: Private Journal MCP Server Specification
+
+> Archived document.
+>
+> This spec describes the original MCP-server version of the project and is no longer the current product definition.
+> The app now ships as a local CLI. For current behavior, see the main [README](../README.md), the [CLI conversion design](./plans/2026-03-13-cli-conversion-design.md), and the [CLI conversion plan](./plans/2026-03-13-cli-conversion-plan.md).
 
 ## Overview
 
