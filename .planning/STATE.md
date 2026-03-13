@@ -2,57 +2,40 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-13)
+See: `.planning/PROJECT.md` (updated 2026-03-13)
 
 **Core value:** AI agents can privately record and retrieve journal context through a simple local CLI without MCP transport friction.
-**Current focus:** Phase 1 - CLI Foundation
+**Current focus:** v1 CLI conversion is complete; next work should be driven by a new milestone or v2 requirement selection.
 
 ## Current Position
 
-Phase: 1 of 5 (CLI Foundation)
-Plan: 0 of 3 in current phase
-Status: Ready to plan
-Last activity: 2026-03-13 - Project initialized and roadmap created
+Phase: Complete (5 of 5 roadmap phases finished)
+Plan status: 13 of 13 roadmap plans complete
+Status: No active execution phase
+Last activity: 2026-03-13 - `fc93c5e` converted the MCP runtime to a CLI; `1b6473b` archived MCP-era docs and hardened CLI fallback behavior
 
-Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity:**
-- Total plans completed: 0
-- Average duration: -
-- Total execution time: 0.0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| - | - | - | - |
-
-**Recent Trend:**
-- Last 5 plans: -
-- Trend: Stable
+Progress: [##########] 100%
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Init] Convert the app surface from MCP to a direct CLI while preserving the journal/search core
-- [Init] Keep Markdown journal storage and embedding compatibility during the migration
+- The product surface is now a direct CLI, not an MCP server.
+- Markdown journal storage and local embedding-based retrieval remain the compatibility baseline.
+- Stable `--json` output is part of the v1 agent contract.
+- CLI fallback behavior was hardened so core flows remain usable when transformer initialization is unavailable.
 
 ### Pending Todos
 
-None yet.
+None in the active roadmap.
 
 ### Blockers/Concerns
 
-- Existing MCP transport code and package identity need to be removed without regressing journal/search behavior
+- No blockers for v1 closure.
+- Unscheduled follow-up scope remains in v2: `FLOW-01` interactive prompting and `FLOW-02` alternate serialization formats.
 
 ## Session Continuity
 
-Last session: 2026-03-13 15:02
-Stopped at: Project initialized, ready to discuss and plan Phase 1
+Last session: 2026-03-13
+Stopped at: CLI conversion roadmap closed after the swarm follow-up pass
 Resume file: None

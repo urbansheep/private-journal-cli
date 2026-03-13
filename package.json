@@ -1,14 +1,14 @@
 {
   "name": "private-journal-cli",
   "version": "1.0.0",
-  "description": "A local-first CLI that gives AI agents and assistants private journaling and semantic search capabilities",
+  "description": "Local-first CLI for private journaling, structured thoughts, and semantic search for AI agents and assistants",
   "main": "dist/index.js",
   "bin": {
     "private-journal": "./dist/index.js"
   },
   "scripts": {
     "prepare": "npm run build",
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\" && tsc",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "test": "jest",
@@ -17,14 +17,25 @@
     "format": "prettier --write src/**/*.ts"
   },
   "keywords": [
+    "private-journal",
     "journal",
-    "private",
     "cli",
-    "ai",
-    "assistant"
+    "assistant",
+    "ai-agents",
+    "semantic-search",
+    "local-first",
+    "markdown"
   ],
   "author": "Jesse Vincent <jesse@fsck.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/urbansheep/private-journal-cli.git"
+  },
+  "homepage": "https://github.com/urbansheep/private-journal-cli#readme",
+  "bugs": {
+    "url": "https://github.com/urbansheep/private-journal-cli/issues"
+  },
   "devDependencies": {
     "@types/jest": "^29.0.0",
     "@types/node": "^20.0.0",

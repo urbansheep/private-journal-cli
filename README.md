@@ -1,48 +1,44 @@
 # Private Journal CLI
 
-A local-first CLI for AI agents and assistants to write private journal entries, capture structured thoughts, and search prior notes with local semantic embeddings.
+`private-journal-cli` publishes the `private-journal` command.
 
-## Features
+It is a local-first CLI for AI agents and assistants to write private journal entries, capture structured thoughts, and search prior notes with local semantic embeddings.
 
-### Journaling
-- **Freeform entries**: Write plain project journal entries from the CLI
-- **Structured thoughts**: Capture `feelings`, `project_notes`, `user_context`, `technical_insights`, and `world_knowledge`
-- **Dual storage**: Project notes stay with the repo, personal notes live in the user journal
-- **Timestamped Markdown**: Entries use YAML frontmatter and microsecond-style filenames
+## Highlights
 
-### Retrieval
-- **Semantic search**: Query prior entries with natural language
-- **Read by path**: Open a full entry directly from search results
-- **Recent listing**: Browse recent entries by time window, scope, and limit
-- **JSON output**: Add `--json` for machine-readable command results
-
-### Privacy
-- **Local-only processing**: Journal writes, embeddings, and search stay on your machine
-- **No hosted API dependency**: Uses `@xenova/transformers` locally for embeddings
-- **Path fallbacks**: Works in project-local or user-level journal locations
+- Local-only journaling and search
+- Project and user journals kept separate by default
+- Timestamped Markdown entries with YAML frontmatter
+- Sidecar `.embedding` files for semantic retrieval
+- `--json` output for automation and agent workflows
 
 ## Installation
 
-Run directly from GitHub with `npx`, or install globally if you prefer:
+Install from npm:
 
 ```bash
-npx github:obra/private-journal-cli help
-```
-
-```bash
-npm install -g github:obra/private-journal-cli
+npm install --global private-journal-cli
 private-journal help
 ```
 
-## Usage
-
-### Show help
+Run without a global install:
 
 ```bash
+npx private-journal-cli help
+```
+
+Use from a local clone before publishing:
+
+```bash
+npm install
+npm run build
+npm link
 private-journal help
 ```
 
-### Write a freeform entry
+## Quick Start
+
+Write a freeform project journal entry:
 
 ```bash
 private-journal write \
@@ -50,7 +46,7 @@ private-journal write \
   --json
 ```
 
-### Write structured thoughts
+Capture structured thoughts. `--project-notes` is written to the project journal; the other sections go to the user journal:
 
 ```bash
 private-journal thoughts \
@@ -60,7 +56,7 @@ private-journal thoughts \
   --json
 ```
 
-### Search journal entries
+Search across project and user journals:
 
 ```bash
 private-journal search \
@@ -70,7 +66,7 @@ private-journal search \
   --json
 ```
 
-### Read a specific entry
+Read a specific entry by path:
 
 ```bash
 private-journal read \
@@ -78,7 +74,7 @@ private-journal read \
   --json
 ```
 
-### List recent entries
+List recent entries:
 
 ```bash
 private-journal recent \
@@ -88,83 +84,28 @@ private-journal recent \
   --json
 ```
 
-## Command Reference
+## Storage Model
 
-### `write`
-Write a freeform project journal entry.
+- Project entries default to `.private-journal/` in the current working directory when that location is usable.
+- User entries default to `~/.private-journal/`.
+- Override either location with `--journal-path <path>` or `--user-journal-path <path>`.
+- Search and recent listing read from both journals by default.
 
-Options:
-- `--content <text>`: Entry body
-- `--journal-path <path>`: Override the project journal root
-- `--user-journal-path <path>`: Override the user journal root
-- `--json`: Emit JSON output
-
-### `thoughts`
-Write structured thought sections. `project_notes` go to the project journal. The other sections go to the user journal.
-
-Options:
-- `--feelings <text>`
-- `--project-notes <text>`
-- `--user-context <text>`
-- `--technical-insights <text>`
-- `--world-knowledge <text>`
-- `--journal-path <path>`
-- `--user-journal-path <path>`
-- `--json`
-
-### `search`
-Search entries semantically.
-
-Options:
-- `--query <text>`
-- `--limit <number>`
-- `--type project|user|both`
-- `--sections section1,section2`
-- `--journal-path <path>`
-- `--user-journal-path <path>`
-- `--json`
-
-### `read`
-Read an entry by path.
-
-Options:
-- `--path <absolute-or-relative-path>`
-- `--json`
-
-### `recent`
-List recent entries.
-
-Options:
-- `--days <number>`
-- `--limit <number>`
-- `--type project|user|both`
-- `--journal-path <path>`
-- `--user-journal-path <path>`
-- `--json`
-
-## File Structure
-
-### Project Journal
+Example layout:
 
 ```text
 .private-journal/
-├── 2026-03-13/
-│   ├── 14-30-45-123456.md
-│   ├── 14-30-45-123456.embedding
-│   └── ...
-```
+  2026-03-13/
+    14-30-45-123456.md
+    14-30-45-123456.embedding
 
-### User Journal
-
-```text
 ~/.private-journal/
-├── 2026-03-13/
-│   ├── 14-32-15-789012.md
-│   ├── 14-32-15-789012.embedding
-│   └── ...
+  2026-03-13/
+    14-32-15-789012.md
+    14-32-15-789012.embedding
 ```
 
-### Entry Format
+Each entry is stored as Markdown with YAML frontmatter:
 
 ```markdown
 ---
@@ -177,6 +118,72 @@ timestamp: 1773412245123
 
 Command handlers are easier to test than transport-specific wrappers.
 ```
+
+## Command Reference
+
+### `write`
+
+Write a freeform project journal entry.
+
+Options:
+- `--content <text>` entry body
+- `--journal-path <path>` override the project journal root
+- `--user-journal-path <path>` override the user journal root
+- `--json` emit JSON output
+
+### `thoughts`
+
+Write structured thought sections. `project_notes` is stored in the project journal. `feelings`, `user_context`, `technical_insights`, and `world_knowledge` are stored in the user journal.
+
+Options:
+- `--feelings <text>`
+- `--project-notes <text>`
+- `--user-context <text>`
+- `--technical-insights <text>`
+- `--world-knowledge <text>`
+- `--journal-path <path>`
+- `--user-journal-path <path>`
+- `--json`
+
+### `search`
+
+Search entries semantically.
+
+Options:
+- `--query <text>`
+- `--limit <number>`
+- `--type project|user|both`
+- `--sections section1,section2`
+- `--journal-path <path>`
+- `--user-journal-path <path>`
+- `--json`
+
+### `read`
+
+Read an entry by path.
+
+Options:
+- `--path <absolute-or-relative-path>`
+- `--json`
+
+### `recent`
+
+List recent entries.
+
+Options:
+- `--days <number>`
+- `--limit <number>`
+- `--type project|user|both`
+- `--journal-path <path>`
+- `--user-journal-path <path>`
+- `--json`
+
+## Output and Exit Codes
+
+- Add `--json` to any command for machine-readable output.
+- Exit code `0` means success.
+- Exit code `1` means CLI usage or validation error.
+- Exit code `2` means an unexpected runtime failure.
 
 ## Development
 
