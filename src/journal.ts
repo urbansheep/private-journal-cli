@@ -1,11 +1,11 @@
-// ABOUTME: Core journal writing functionality for MCP server
-// ABOUTME: Handles file system operations, timestamps, and markdown formatting
+// ABOUTME: Core journal writing functionality for the private journal CLI
+// ABOUTME: Handles file system operations, timestamps, markdown formatting, and write metadata
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { JournalEntry } from './types';
 import { resolveUserJournalPath } from './paths';
 import { EmbeddingService, EmbeddingData } from './embeddings';
+import { ThoughtSections, WrittenEntry, WrittenThoughtsResult } from './types';
 
 export class JournalManager {
   private projectJournalPath: string;
@@ -18,52 +18,48 @@ export class JournalManager {
     this.embeddingService = EmbeddingService.getInstance();
   }
 
-  async writeEntry(content: string): Promise<void> {
+  async writeEntry(content: string): Promise<WrittenEntry> {
     const timestamp = new Date();
     const dateString = this.formatDate(timestamp);
     const timeString = this.formatTimestamp(timestamp);
-    
+
     const dayDirectory = path.join(this.projectJournalPath, dateString);
     const fileName = `${timeString}.md`;
     const filePath = path.join(dayDirectory, fileName);
 
     await this.ensureDirectoryExists(dayDirectory);
-    
+
     const formattedEntry = this.formatEntry(content, timestamp);
     await fs.writeFile(filePath, formattedEntry, 'utf8');
 
-    // Generate and save embedding
     await this.generateEmbeddingForEntry(filePath, formattedEntry, timestamp);
+
+    return this.createWrittenEntry(filePath, timestamp, [], 'project');
   }
 
-  async writeThoughts(thoughts: {
-    feelings?: string;
-    project_notes?: string;
-    user_context?: string;
-    technical_insights?: string;
-    world_knowledge?: string;
-  }): Promise<void> {
+  async writeThoughts(thoughts: ThoughtSections): Promise<WrittenThoughtsResult> {
     const timestamp = new Date();
-    
-    // Split thoughts into project-local and user-global
-    const projectThoughts = { project_notes: thoughts.project_notes };
-    const userThoughts = {
+
+    const projectThoughts: ThoughtSections = { project_notes: thoughts.project_notes };
+    const userThoughts: ThoughtSections = {
       feelings: thoughts.feelings,
       user_context: thoughts.user_context,
       technical_insights: thoughts.technical_insights,
-      world_knowledge: thoughts.world_knowledge
+      world_knowledge: thoughts.world_knowledge,
     };
-    
-    // Write project notes to project directory
+
+    const result: WrittenThoughtsResult = {};
+
     if (projectThoughts.project_notes) {
-      await this.writeThoughtsToLocation(projectThoughts, timestamp, this.projectJournalPath);
+      result.project = await this.writeThoughtsToLocation(projectThoughts, timestamp, this.projectJournalPath, 'project');
     }
-    
-    // Write user thoughts to user directory
-    const hasUserContent = Object.values(userThoughts).some(value => value !== undefined);
+
+    const hasUserContent = Object.values(userThoughts).some((value) => value !== undefined);
     if (hasUserContent) {
-      await this.writeThoughtsToLocation(userThoughts, timestamp, this.userJournalPath);
+      result.user = await this.writeThoughtsToLocation(userThoughts, timestamp, this.userJournalPath, 'user');
     }
+
+    return result;
   }
 
   private formatDate(date: Date): string {
@@ -82,16 +78,16 @@ export class JournalManager {
   }
 
   private formatEntry(content: string, timestamp: Date): string {
-    const timeDisplay = timestamp.toLocaleTimeString('en-US', { 
-      hour12: true, 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      second: '2-digit' 
+    const timeDisplay = timestamp.toLocaleTimeString('en-US', {
+      hour12: true,
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
     });
-    const dateDisplay = timestamp.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const dateDisplay = timestamp.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
 
     return `---
@@ -105,69 +101,59 @@ ${content}
   }
 
   private async writeThoughtsToLocation(
-    thoughts: {
-      feelings?: string;
-      project_notes?: string;
-      user_context?: string;
-      technical_insights?: string;
-      world_knowledge?: string;
-    },
+    thoughts: ThoughtSections,
     timestamp: Date,
-    basePath: string
-  ): Promise<void> {
+    basePath: string,
+    scope: 'project' | 'user'
+  ): Promise<WrittenEntry> {
     const dateString = this.formatDate(timestamp);
     const timeString = this.formatTimestamp(timestamp);
-    
+
     const dayDirectory = path.join(basePath, dateString);
     const fileName = `${timeString}.md`;
     const filePath = path.join(dayDirectory, fileName);
 
     await this.ensureDirectoryExists(dayDirectory);
-    
+
     const formattedEntry = this.formatThoughts(thoughts, timestamp);
     await fs.writeFile(filePath, formattedEntry, 'utf8');
 
-    // Generate and save embedding
     await this.generateEmbeddingForEntry(filePath, formattedEntry, timestamp);
+
+    return this.createWrittenEntry(filePath, timestamp, this.extractSections(thoughts), scope);
   }
 
-  private formatThoughts(thoughts: {
-    feelings?: string;
-    project_notes?: string;
-    user_context?: string;
-    technical_insights?: string;
-    world_knowledge?: string;
-  }, timestamp: Date): string {
-    const timeDisplay = timestamp.toLocaleTimeString('en-US', { 
-      hour12: true, 
-      hour: 'numeric', 
-      minute: '2-digit', 
-      second: '2-digit' 
+  private formatThoughts(thoughts: ThoughtSections, timestamp: Date): string {
+    const timeDisplay = timestamp.toLocaleTimeString('en-US', {
+      hour12: true,
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
     });
-    const dateDisplay = timestamp.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    const dateDisplay = timestamp.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
 
     const sections = [];
-    
+
     if (thoughts.feelings) {
       sections.push(`## Feelings\n\n${thoughts.feelings}`);
     }
-    
+
     if (thoughts.project_notes) {
       sections.push(`## Project Notes\n\n${thoughts.project_notes}`);
     }
-    
+
     if (thoughts.user_context) {
       sections.push(`## User Context\n\n${thoughts.user_context}`);
     }
-    
+
     if (thoughts.technical_insights) {
       sections.push(`## Technical Insights\n\n${thoughts.technical_insights}`);
     }
-    
+
     if (thoughts.world_knowledge) {
       sections.push(`## World Knowledge\n\n${thoughts.world_knowledge}`);
     }
@@ -182,63 +168,95 @@ ${sections.join('\n\n')}
 `;
   }
 
-  private async generateEmbeddingForEntry(
+  private extractSections(thoughts: ThoughtSections): string[] {
+    const sections: string[] = [];
+
+    if (thoughts.feelings) sections.push('Feelings');
+    if (thoughts.project_notes) sections.push('Project Notes');
+    if (thoughts.user_context) sections.push('User Context');
+    if (thoughts.technical_insights) sections.push('Technical Insights');
+    if (thoughts.world_knowledge) sections.push('World Knowledge');
+
+    return sections;
+  }
+
+  private createWrittenEntry(
     filePath: string,
-    content: string,
-    timestamp: Date
-  ): Promise<void> {
+    timestamp: Date,
+    sections: string[],
+    scope: 'project' | 'user'
+  ): WrittenEntry {
+    const titleTime = timestamp.toLocaleTimeString('en-US', {
+      hour12: true,
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const titleDate = timestamp.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    return {
+      path: filePath,
+      timestamp: timestamp.getTime(),
+      title: `${titleTime} - ${titleDate}`,
+      sections,
+      scope,
+    };
+  }
+
+  private async generateEmbeddingForEntry(filePath: string, content: string, timestamp: Date): Promise<void> {
     try {
       const { text, sections } = this.embeddingService.extractSearchableText(content);
-      
+
       if (text.trim().length === 0) {
-        return; // Skip empty entries
+        return;
       }
 
       const embedding = await this.embeddingService.generateEmbedding(text);
-      
+
       const embeddingData: EmbeddingData = {
         embedding,
         text,
         sections,
         timestamp: timestamp.getTime(),
-        path: filePath
+        path: filePath,
       };
 
       await this.embeddingService.saveEmbedding(filePath, embeddingData);
     } catch (error) {
       console.error(`Failed to generate embedding for ${filePath}:`, error);
-      // Don't throw - embedding failure shouldn't prevent journal writing
     }
   }
 
   async generateMissingEmbeddings(): Promise<number> {
     let count = 0;
     const paths = [this.projectJournalPath, this.userJournalPath];
-    
+
     for (const basePath of paths) {
       try {
         const dayDirs = await fs.readdir(basePath);
-        
+
         for (const dayDir of dayDirs) {
           const dayPath = path.join(basePath, dayDir);
           const stat = await fs.stat(dayPath);
-          
+
           if (!stat.isDirectory() || !dayDir.match(/^\d{4}-\d{2}-\d{2}$/)) {
             continue;
           }
 
           const files = await fs.readdir(dayPath);
-          const mdFiles = files.filter(file => file.endsWith('.md'));
+          const mdFiles = files.filter((file) => file.endsWith('.md'));
 
           for (const mdFile of mdFiles) {
             const mdPath = path.join(dayPath, mdFile);
             const embeddingPath = mdPath.replace(/\.md$/, '.embedding');
-            
+
             try {
               await fs.access(embeddingPath);
-              // Embedding already exists, skip
             } catch {
-              // Generate missing embedding
               console.error(`Generating missing embedding for ${mdPath}`);
               const content = await fs.readFile(mdPath, 'utf8');
               const timestamp = this.extractTimestampFromPath(mdPath) || new Date();
@@ -248,36 +266,35 @@ ${sections.join('\n\n')}
           }
         }
       } catch (error) {
-        if ((error as any)?.code !== 'ENOENT') {
+        if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
           console.error(`Failed to scan ${basePath} for missing embeddings:`, error);
         }
       }
     }
-    
+
     return count;
   }
 
   private extractTimestampFromPath(filePath: string): Date | null {
     const filename = path.basename(filePath, '.md');
     const match = filename.match(/^(\d{2})-(\d{2})-(\d{2})-\d{6}$/);
-    
+
     if (!match) return null;
-    
+
     const [, hours, minutes, seconds] = match;
     const dirName = path.basename(path.dirname(filePath));
     const dateMatch = dirName.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    
+
     if (!dateMatch) return null;
-    
+
     const [, year, month, day] = dateMatch;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 
-                   parseInt(hours), parseInt(minutes), parseInt(seconds));
+    return new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), parseInt(hours, 10), parseInt(minutes, 10), parseInt(seconds, 10));
   }
 
   private async ensureDirectoryExists(dirPath: string): Promise<void> {
     try {
       await fs.access(dirPath);
-    } catch (error) {
+    } catch {
       try {
         await fs.mkdir(dirPath, { recursive: true });
       } catch (mkdirError) {

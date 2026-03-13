@@ -1,6 +1,5 @@
 // ABOUTME: Unit tests for journal writing functionality
-// ABOUTME: Tests file system operations, timestamps, and formatting
-
+// ABOUTME: Tests file system operations, timestamps, formatting, and embedding sidecars
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -14,6 +13,14 @@ function getFormattedDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+function getMarkdownFile(files: string[]): string {
+  const match = files.find((file) => file.endsWith('.md'));
+  if (!match) {
+    throw new Error(`No markdown file found in ${files.join(', ')}`);
+  }
+  return match;
+}
+
 describe('JournalManager', () => {
   let projectTempDir: string;
   let userTempDir: string;
@@ -23,81 +30,59 @@ describe('JournalManager', () => {
   beforeEach(async () => {
     projectTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'journal-project-test-'));
     userTempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'journal-user-test-'));
-    
-    // Mock HOME environment
+
     originalHome = process.env.HOME;
     process.env.HOME = userTempDir;
-    
+
     journalManager = new JournalManager(projectTempDir);
   });
 
   afterEach(async () => {
-    // Restore original HOME
     if (originalHome !== undefined) {
       process.env.HOME = originalHome;
     } else {
       delete process.env.HOME;
     }
-    
+
     await fs.rm(projectTempDir, { recursive: true, force: true });
     await fs.rm(userTempDir, { recursive: true, force: true });
   });
 
   test('writes journal entry to correct file structure', async () => {
-    const content = 'This is a test journal entry.';
-    
-    await journalManager.writeEntry(content);
+    await journalManager.writeEntry('This is a test journal entry.');
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
-    
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const files = await fs.readdir(dayDir);
-    expect(files).toHaveLength(2); // .md and .embedding files
-    
-    const mdFile = files.find(f => f.endsWith('.md'));
-    const embeddingFile = files.find(f => f.endsWith('.embedding'));
-    
-    expect(mdFile).toBeDefined();
-    expect(embeddingFile).toBeDefined();
-    expect(mdFile).toMatch(/^\d{2}-\d{2}-\d{2}-\d{6}\.md$/);
+
+    expect(files).toHaveLength(2);
+    expect(files.find((file) => file.endsWith('.md'))).toBeDefined();
+    expect(files.find((file) => file.endsWith('.embedding'))).toBeDefined();
+    expect(getMarkdownFile(files)).toMatch(/^\d{2}-\d{2}-\d{2}-\d{6}\.md$/);
   });
 
   test('creates directory structure automatically', async () => {
-    const content = 'Test entry';
-    
-    await journalManager.writeEntry(content);
+    await journalManager.writeEntry('Test entry');
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
-    
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const stats = await fs.stat(dayDir);
+
     expect(stats.isDirectory()).toBe(true);
   });
 
   test('formats entry content correctly', async () => {
     const content = 'This is my journal entry content.';
-    
     await journalManager.writeEntry(content);
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
-    const files = await fs.readdir(dayDir);
-    const mdFile = files.find(f => f.endsWith('.md'));
-    const filePath = path.join(dayDir, mdFile!);
-    
-    const fileContent = await fs.readFile(filePath, 'utf8');
-    
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
+    const fileContent = await fs.readFile(path.join(dayDir, getMarkdownFile(await fs.readdir(dayDir))), 'utf8');
+
     expect(fileContent).toContain('---');
     expect(fileContent).toContain('title: "');
     expect(fileContent).toContain('date: ');
     expect(fileContent).toContain('timestamp: ');
     expect(fileContent).toContain(' - ');
     expect(fileContent).toContain(content);
-    
-    // Check YAML frontmatter structure
+
     const lines = fileContent.split('\n');
     expect(lines[0]).toBe('---');
     expect(lines[1]).toMatch(/^title: ".*"$/);
@@ -112,32 +97,24 @@ describe('JournalManager', () => {
     await journalManager.writeEntry('First entry');
     await journalManager.writeEntry('Second entry');
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const files = await fs.readdir(dayDir);
-    
-    expect(files).toHaveLength(4); // 2 .md files + 2 .embedding files
-    const mdFiles = files.filter(f => f.endsWith('.md'));
+    const mdFiles = files.filter((file) => file.endsWith('.md'));
+
+    expect(files).toHaveLength(4);
     expect(mdFiles).toHaveLength(2);
     expect(mdFiles[0]).not.toEqual(mdFiles[1]);
   });
 
-  test('handles empty content', async () => {
-    const content = '';
-    
-    await journalManager.writeEntry(content);
+  test('handles empty content without creating an embedding sidecar', async () => {
+    await journalManager.writeEntry('');
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const files = await fs.readdir(dayDir);
-    
-    expect(files).toHaveLength(2); // .md and .embedding files
-    
-    const filePath = path.join(dayDir, files[0]);
-    const fileContent = await fs.readFile(filePath, 'utf8');
-    
+    const fileContent = await fs.readFile(path.join(dayDir, getMarkdownFile(files)), 'utf8');
+
+    expect(files).toHaveLength(1);
+    expect(files[0]).toMatch(/\.md$/);
     expect(fileContent).toContain('---');
     expect(fileContent).toContain('title: "');
     expect(fileContent).toContain(' - ');
@@ -147,59 +124,41 @@ describe('JournalManager', () => {
 
   test('handles large content', async () => {
     const content = 'A'.repeat(10000);
-    
     await journalManager.writeEntry(content);
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const dayDir = path.join(projectTempDir, dateString);
+    const dayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const files = await fs.readdir(dayDir);
-    const filePath = path.join(dayDir, files[0]);
-    
-    const fileContent = await fs.readFile(filePath, 'utf8');
+    const fileContent = await fs.readFile(path.join(dayDir, getMarkdownFile(files)), 'utf8');
+
     expect(fileContent).toContain(content);
   });
 
-  test('writes project notes to project directory', async () => {
-    const thoughts = {
-      project_notes: 'The architecture is solid'
-    };
-    
-    await journalManager.writeThoughts(thoughts);
+  test('writes project notes to project directory with an embedding sidecar', async () => {
+    await journalManager.writeThoughts({ project_notes: 'The architecture is solid' });
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const projectDayDir = path.join(projectTempDir, dateString);
-    
+    const projectDayDir = path.join(projectTempDir, getFormattedDate(new Date()));
     const projectFiles = await fs.readdir(projectDayDir);
-    expect(projectFiles).toHaveLength(1);
-    
-    const projectFilePath = path.join(projectDayDir, projectFiles[0]);
-    const projectContent = await fs.readFile(projectFilePath, 'utf8');
-    
+    const projectContent = await fs.readFile(path.join(projectDayDir, getMarkdownFile(projectFiles)), 'utf8');
+
+    expect(projectFiles).toHaveLength(2);
+    expect(projectFiles.find((file) => file.endsWith('.embedding'))).toBeDefined();
     expect(projectContent).toContain('## Project Notes');
     expect(projectContent).toContain('The architecture is solid');
     expect(projectContent).not.toContain('## Feelings');
   });
 
-  test('writes user thoughts to user directory', async () => {
-    const thoughts = {
+  test('writes user thoughts to user directory with an embedding sidecar', async () => {
+    await journalManager.writeThoughts({
       feelings: 'I feel great about this feature',
-      technical_insights: 'TypeScript interfaces are powerful'
-    };
-    
-    await journalManager.writeThoughts(thoughts);
+      technical_insights: 'TypeScript interfaces are powerful',
+    });
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    const userDayDir = path.join(userTempDir, '.private-journal', dateString);
-    
+    const userDayDir = path.join(userTempDir, '.private-journal', getFormattedDate(new Date()));
     const userFiles = await fs.readdir(userDayDir);
-    expect(userFiles).toHaveLength(1);
-    
-    const userFilePath = path.join(userDayDir, userFiles[0]);
-    const userContent = await fs.readFile(userFilePath, 'utf8');
-    
+    const userContent = await fs.readFile(path.join(userDayDir, getMarkdownFile(userFiles)), 'utf8');
+
+    expect(userFiles).toHaveLength(2);
+    expect(userFiles.find((file) => file.endsWith('.embedding'))).toBeDefined();
     expect(userContent).toContain('## Feelings');
     expect(userContent).toContain('I feel great about this feature');
     expect(userContent).toContain('## Technical Insights');
@@ -208,35 +167,27 @@ describe('JournalManager', () => {
   });
 
   test('splits thoughts between project and user directories', async () => {
-    const thoughts = {
+    await journalManager.writeThoughts({
       feelings: 'I feel great',
       project_notes: 'The architecture is solid',
       user_context: 'Jesse prefers simple solutions',
       technical_insights: 'TypeScript is powerful',
-      world_knowledge: 'Git workflows matter'
-    };
-    
-    await journalManager.writeThoughts(thoughts);
+      world_knowledge: 'Git workflows matter',
+    });
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    
-    // Check project directory
+    const dateString = getFormattedDate(new Date());
     const projectDayDir = path.join(projectTempDir, dateString);
-    const projectFiles = await fs.readdir(projectDayDir);
-    expect(projectFiles).toHaveLength(1);
-    
-    const projectContent = await fs.readFile(path.join(projectDayDir, projectFiles[0]), 'utf8');
-    expect(projectContent).toContain('## Project Notes');
-    expect(projectContent).toContain('The architecture is solid');
-    expect(projectContent).not.toContain('## Feelings');
-    
-    // Check user directory
     const userDayDir = path.join(userTempDir, '.private-journal', dateString);
+
+    const projectFiles = await fs.readdir(projectDayDir);
     const userFiles = await fs.readdir(userDayDir);
-    expect(userFiles).toHaveLength(1);
-    
-    const userContent = await fs.readFile(path.join(userDayDir, userFiles[0]), 'utf8');
+    const projectContent = await fs.readFile(path.join(projectDayDir, getMarkdownFile(projectFiles)), 'utf8');
+    const userContent = await fs.readFile(path.join(userDayDir, getMarkdownFile(userFiles)), 'utf8');
+
+    expect(projectFiles).toHaveLength(2);
+    expect(userFiles).toHaveLength(2);
+    expect(projectContent).toContain('## Project Notes');
+    expect(projectContent).not.toContain('## Feelings');
     expect(userContent).toContain('## Feelings');
     expect(userContent).toContain('## User Context');
     expect(userContent).toContain('## Technical Insights');
@@ -245,69 +196,47 @@ describe('JournalManager', () => {
   });
 
   test('handles thoughts with only user sections', async () => {
-    const thoughts = {
-      world_knowledge: 'Learned something interesting about databases'
-    };
-    
-    await journalManager.writeThoughts(thoughts);
+    await journalManager.writeThoughts({ world_knowledge: 'Learned something interesting about databases' });
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    
-    // Should only create user directory, not project directory
+    const dateString = getFormattedDate(new Date());
     const userDayDir = path.join(userTempDir, '.private-journal', dateString);
     const userFiles = await fs.readdir(userDayDir);
-    expect(userFiles).toHaveLength(1);
-    
-    const userContent = await fs.readFile(path.join(userDayDir, userFiles[0]), 'utf8');
+    const userContent = await fs.readFile(path.join(userDayDir, getMarkdownFile(userFiles)), 'utf8');
+
+    expect(userFiles).toHaveLength(2);
     expect(userContent).toContain('## World Knowledge');
     expect(userContent).toContain('Learned something interesting about databases');
-    
-    // Project directory should not exist
-    const projectDayDir = path.join(projectTempDir, dateString);
-    await expect(fs.access(projectDayDir)).rejects.toThrow();
+
+    await expect(fs.access(path.join(projectTempDir, dateString))).rejects.toThrow();
   });
 
   test('handles thoughts with only project sections', async () => {
-    const thoughts = {
-      project_notes: 'This specific codebase pattern works well'
-    };
-    
-    await journalManager.writeThoughts(thoughts);
+    await journalManager.writeThoughts({ project_notes: 'This specific codebase pattern works well' });
 
-    const today = new Date();
-    const dateString = getFormattedDate(today);
-    
-    // Should only create project directory, not user directory
+    const dateString = getFormattedDate(new Date());
     const projectDayDir = path.join(projectTempDir, dateString);
     const projectFiles = await fs.readdir(projectDayDir);
-    expect(projectFiles).toHaveLength(1);
-    
-    const projectContent = await fs.readFile(path.join(projectDayDir, projectFiles[0]), 'utf8');
+    const projectContent = await fs.readFile(path.join(projectDayDir, getMarkdownFile(projectFiles)), 'utf8');
+
+    expect(projectFiles).toHaveLength(2);
     expect(projectContent).toContain('## Project Notes');
     expect(projectContent).toContain('This specific codebase pattern works well');
-    
-    // User directory should not exist
-    const userDayDir = path.join(userTempDir, '.private-journal', dateString);
-    await expect(fs.access(userDayDir)).rejects.toThrow();
+
+    await expect(fs.access(path.join(userTempDir, '.private-journal', dateString))).rejects.toThrow();
   });
 
   test('uses explicit user journal path when provided', async () => {
     const customUserDir = await fs.mkdtemp(path.join(os.tmpdir(), 'custom-user-'));
     const customJournalManager = new JournalManager(projectTempDir, customUserDir);
-    
-    try {
-      const thoughts = { feelings: 'Testing custom path' };
-      await customJournalManager.writeThoughts(thoughts);
 
-      const today = new Date();
-      const dateString = getFormattedDate(today);
-      const customDayDir = path.join(customUserDir, dateString);
-      
+    try {
+      await customJournalManager.writeThoughts({ feelings: 'Testing custom path' });
+
+      const customDayDir = path.join(customUserDir, getFormattedDate(new Date()));
       const customFiles = await fs.readdir(customDayDir);
-      expect(customFiles).toHaveLength(1);
-      
-      const customContent = await fs.readFile(path.join(customDayDir, customFiles[0]), 'utf8');
+      const customContent = await fs.readFile(path.join(customDayDir, getMarkdownFile(customFiles)), 'utf8');
+
+      expect(customFiles).toHaveLength(2);
       expect(customContent).toContain('Testing custom path');
     } finally {
       await fs.rm(customUserDir, { recursive: true, force: true });

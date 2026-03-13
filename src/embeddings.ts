@@ -21,6 +21,16 @@ export class EmbeddingService {
 
   private constructor() {}
 
+  private logDebug(message: string, error?: unknown): void {
+    if (process.env.PRIVATE_JOURNAL_DEBUG === '1') {
+      if (error !== undefined) {
+        console.error(message, error);
+      } else {
+        console.error(message);
+      }
+    }
+  }
+
   static getInstance(): EmbeddingService {
     if (!EmbeddingService.instance) {
       EmbeddingService.instance = new EmbeddingService();
@@ -39,11 +49,11 @@ export class EmbeddingService {
 
   private async doInitialize(): Promise<void> {
     try {
-      console.error('Loading embedding model...');
+      this.logDebug('Loading embedding model...');
       this.extractor = await pipeline('feature-extraction', this.modelName);
-      console.error('Embedding model loaded successfully');
+      this.logDebug('Embedding model loaded successfully');
     } catch (error) {
-      console.error('Failed to load embedding model:', error);
+      this.logDebug('Failed to load embedding model:', error);
       throw error;
     }
   }

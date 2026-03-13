@@ -1,10 +1,10 @@
 {
-  "name": "private-journal-mcp",
+  "name": "private-journal-cli",
   "version": "1.0.0",
-  "description": "A lightweight MCP server that provides Claude with a private journaling capability to process feelings and thoughts",
+  "description": "A local-first CLI that gives AI agents and assistants private journaling and semantic search capabilities",
   "main": "dist/index.js",
   "bin": {
-    "private-journal-mcp": "./dist/index.js"
+    "private-journal": "./dist/index.js"
   },
   "scripts": {
     "prepare": "npm run build",
@@ -17,11 +17,11 @@
     "format": "prettier --write src/**/*.ts"
   },
   "keywords": [
-    "mcp",
     "journal",
     "private",
-    "claude",
-    "ai"
+    "cli",
+    "ai",
+    "assistant"
   ],
   "author": "Jesse Vincent <jesse@fsck.com>",
   "license": "MIT",
@@ -37,7 +37,6 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.4.0",
     "@xenova/transformers": "^2.17.2"
   },
   "files": [
