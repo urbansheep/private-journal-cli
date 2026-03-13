@@ -36,6 +36,24 @@ npm link
 private-journal help
 ```
 
+## Agent Skill
+
+A ready-made agent skill is bundled in `skills/private-journal-cli.skill`. Install it so your agent runtime (Claude Code, Codex, Cursor, etc.) automatically knows when and how to use `private-journal`:
+
+```bash
+# From this repo
+npx skills add ./skills/private-journal-cli.skill
+
+# Or once published to npm
+npx skills add private-journal-cli@skill
+```
+
+The skill teaches agents to:
+- capture structured thoughts with `thoughts` (preferred over `write`)
+- always pass `--json` for machine-readable output
+- search prior entries before writing new ones
+- route project notes vs. personal insights to the correct journal
+
 ## Quick Start
 
 Write a freeform project journal entry:
