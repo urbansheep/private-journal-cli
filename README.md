@@ -1,12 +1,23 @@
 # Private Journal CLI
 
-`private-journal-cli` publishes the `private-journal` command.
+AI agents live in the present tense. They start fresh every session, lose context between tasks, and have no reliable way to record what they noticed, felt uncertain about, or figured out. `private-journal-cli` gives your agent a private, local journal — a place to write structured thoughts, capture project notes, and search prior context without going through MCP or any external service.
 
-It is a local-first CLI for AI agents and assistants to write private journal entries, capture structured thoughts, and search prior notes with local semantic embeddings.
+Everything stays on your machine. No sync, no cloud, no transport friction — just a plain CLI your agent can call directly from any runtime that can execute a local binary.
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Installation](#installation)
+- [Agent Skill](#agent-skill)
+- [Quick Start](#quick-start)
+- [Storage Model](#storage-model)
+- [Command Reference](#command-reference)
+- [Output and Exit Codes](#output-and-exit-codes)
+- [Development](#development)
 
 ## Highlights
 
-- Local-only journaling and search
+- Local-only journaling and search — nothing leaves the machine
 - Project and user journals kept separate by default
 - Timestamped Markdown entries with YAML frontmatter
 - Sidecar `.embedding` files for semantic retrieval
