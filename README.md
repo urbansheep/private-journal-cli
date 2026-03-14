@@ -214,6 +214,26 @@ Options:
 - Exit code `1` means CLI usage or validation error.
 - Exit code `2` means an unexpected runtime failure.
 
+## Hooks Integration
+
+You can wire `private-journal` into Claude Code's `Stop` hook so every agent session automatically writes a project note when Claude finishes a response.
+
+Copy [`docs/hooks/journal-stop.js`](docs/hooks/journal-stop.js) to `~/.claude/hooks/journal-stop.js`, then register it in `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"/Users/you/.claude/hooks/journal-stop.js\"" }] }]
+  }
+}
+```
+
+**Design notes:**
+- Always exits `0` — a journal failure never blocks Claude
+- Writes to the **project journal** (`cwd/.private-journal`), keeping entries scoped to the repo
+- Silently skips if `private-journal` is not on `$PATH`
+- Trims `last_assistant_message` to 800 chars — enough context without bloat
+
 ## Development
 
 ```bash
